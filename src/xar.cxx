@@ -1,41 +1,54 @@
-#include <stdio.h>
+#include <iostream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/features2d.hpp>
 
+#define DEFINE_CASE(ns, s) return {#ns "::" #s, #s};
+#define FORALL_NS_SYMBOLS(_) _(std, cout) 
+
+std::pair<const char*, const char*> experimental(){
+    FORALL_NS_SYMBOLS(DEFINE_CASE)
+}
+void test(){
+    auto pair = experimental();
+    std::cout<<pair.first<<":"<<pair.second<<std::endl;
+}
+int freak(const cv::Mat & frame, cv::Mat &out_frame)
+{
+    cv::cvtColor(frame, out_frame, cv::COLOR_BGR2GRAY);
+    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(5000);
+
+    std::vector<cv::KeyPoint> keypoints_object;
+    detector->detect(frame, keypoints_object);
+    
+    cv::drawKeypoints(frame, keypoints_object, out_frame);
+    
+
+    return 0;
+}
+
 int main(){
-    CvCapture * captureDevice;
-    IplImage * currentFrame;
-    captureDevice = cvCaptureFromCAM(0);
-    if(!captureDevice){
-        printf("Error opening webcam. Exiting. \n");
+    test();
+    cv::VideoCapture capture(0);
+    if(!capture.isOpened()){
+        std::cout<<"Error opening webcam. Exiting."<<std::endl;
         return -1;
     }
-    cvNamedWindow("xar", CV_WINDOW_AUTOSIZE);
+    cv::namedWindow("xar", cv::WINDOW_AUTOSIZE);
     
     int key = -1;
     while(key == -1){
-        currentFrame = cvQueryFrame(captureDevice);
-        if(!currentFrame){
+        cv::Mat frame;
+        
+        if(!capture.read(frame)){
             break;
         }
-        for(int x = 0; x < currentFrame->width; x++){
-            for(int y = 0; y < currentFrame->height; y++){
-                int B = 255 - CV_IMAGE_ELEM(currentFrame, uchar, y, x*3);
-                int G = 255 - CV_IMAGE_ELEM(currentFrame, uchar, y, x*3+1);
-                int R = 255 - CV_IMAGE_ELEM(currentFrame, uchar, y, x*3)+2;
-                
-                CV_IMAGE_ELEM(currentFrame, uchar, y, x*3) = B;
-                CV_IMAGE_ELEM(currentFrame, uchar, y, x*3+1) = G;
-                CV_IMAGE_ELEM(currentFrame, uchar, y, x*3+2) = R;
-            }
-            
+        cv::Mat out_frame;
+        freak(frame, out_frame);
+        cv::imshow("xar", out_frame);
+        if( cv::waitKey(50) == 27 ){
+            break;
         }
-        cvShowImage("xar", currentFrame);
-        key = cvWaitKey(30);
     }
-    cvReleaseCapture(&captureDevice);
-    cvReleaseImage(&currentFrame);
-    cvDestroyWindow("xar");
     return 0;
 }
