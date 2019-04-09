@@ -3,6 +3,8 @@
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/features2d.hpp>
 
+#include <doraemon/base64/base64.h>
+
 #define DEFINE_CASE(ns, s) return {#ns "::" #s, #s};
 #define FORALL_NS_SYMBOLS(_) _(std, cout) 
 
@@ -27,6 +29,32 @@ int freak(const cv::Mat & frame, cv::Mat &out_frame)
     return 0;
 }
 
+std::string mat_base64_encode(const cv::Mat& m)
+{
+	int params[3] = {0};
+	params[0] = CV_IMWRITE_JPEG_QUALITY;
+	params[1] = 100;
+
+	std::vector<uchar> buf;
+	bool code = cv::imencode(".jpg", m, buf, std::vector<int>(params, params+2));
+	uchar* result = reinterpret_cast<uchar*> (&buf[0]);
+
+	return doraemon::base64::encode(result, buf.size());
+
+}
+
+
+
+cv::Mat mat_base64_decode(const std::string& s)
+{
+	// Decode data
+	std::string decoded_string = doraemon::base64::decode(s);
+	std::vector<uchar> data(decoded_string.begin(), decoded_string.end());
+
+	cv::Mat img = imdecode(data, cv::IMREAD_UNCHANGED);
+	return img;
+}
+
 int main(){
     test();
     cv::VideoCapture capture(0);
@@ -43,6 +71,8 @@ int main(){
         if(!capture.read(frame)){
             break;
         }
+        std::cout<<mat_base64_encode(frame)<<std::endl;
+        break;
         cv::Mat out_frame;
         freak(frame, out_frame);
         cv::imshow("xar", out_frame);
