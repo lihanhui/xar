@@ -1,12 +1,16 @@
 #include <iostream>
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/features2d.hpp>
+#include <simple-web-server/client_http.hpp>
 
 #include <doraemon/base64/base64.h>
 
 #define DEFINE_CASE(ns, s) return {#ns "::" #s, #s};
 #define FORALL_NS_SYMBOLS(_) _(std, cout) 
+
+using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
 
 std::pair<const char*, const char*> experimental(){
     FORALL_NS_SYMBOLS(DEFINE_CASE)
@@ -18,13 +22,16 @@ void test(){
 int freak(const cv::Mat & frame, cv::Mat &out_frame)
 {
     cv::cvtColor(frame, out_frame, cv::COLOR_BGR2GRAY);
+    //ORB detector with pyramid but AGAST NO!! cv::AgastFeatureDetector::create(20);//
     cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(5000);
 
     std::vector<cv::KeyPoint> keypoints_object;
     detector->detect(frame, keypoints_object);
-    
+    for(int i = 0; i < keypoints_object.size(); i++){
+        std::cout<<keypoints_object[i].size<<" - "<<keypoints_object[i].octave<<std::endl;
+    }
     cv::drawKeypoints(frame, keypoints_object, out_frame);
-    
+    //std::cout<<keypoints_object.size()<<std::endl;
 
     return 0;
 }
@@ -43,8 +50,6 @@ std::string mat_base64_encode(const cv::Mat& m)
 
 }
 
-
-
 cv::Mat mat_base64_decode(const std::string& s)
 {
 	// Decode data
@@ -54,9 +59,24 @@ cv::Mat mat_base64_decode(const std::string& s)
 	cv::Mat img = imdecode(data, cv::IMREAD_UNCHANGED);
 	return img;
 }
-
+void request(HttpClient & client, const std::string & frame){
+  std::string json_string = "{\"frameId\": \"John\",\"frame\": \"\"$$$$\"\"}";
+  std::string::size_type pos = json_string.find("\"$$$$\"");
+  json_string.replace(pos, std::string("\"$$$$\"").length(), frame);
+  // Synchronous request examples
+  try {
+     
+    auto r2 = client.request("POST", "/api1/mysky/cloud/ar/xxxx", json_string);
+    std::cout << r2->content.rdbuf() << std::endl;
+  }
+  catch(const SimpleWeb::system_error &e) {
+    std::cerr << "Client request error: " << e.what() << std::endl;
+}
+}
 int main(){
     test();
+    HttpClient client("localhost:8080");
+
     cv::VideoCapture capture(0);
     if(!capture.isOpened()){
         std::cout<<"Error opening webcam. Exiting."<<std::endl;
@@ -65,16 +85,24 @@ int main(){
     cv::namedWindow("xar", cv::WINDOW_AUTOSIZE);
     
     int key = -1;
+    int count = 0;
     while(key == -1){
         cv::Mat frame;
         
         if(!capture.read(frame)){
             break;
         }
-        std::cout<<mat_base64_encode(frame)<<std::endl;
-        break;
+        ++count;
+        if(count % 10 == 0){
+            std::string frame_en = mat_base64_encode(frame);
+            //std::cout<<frame_en<<std::endl;
+            request(client, frame_en);
+            count = 0;
+        }
+        //break;
         cv::Mat out_frame;
         freak(frame, out_frame);
+        break;
         cv::imshow("xar", out_frame);
         if( cv::waitKey(50) == 27 ){
             break;
