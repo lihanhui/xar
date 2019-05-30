@@ -7,6 +7,8 @@
 
 #include <doraemon/base64/base64.h>
 
+#include "xar.h"
+
 #define DEFINE_CASE(ns, s) return {#ns "::" #s, #s};
 #define FORALL_NS_SYMBOLS(_) _(std, cout) 
 
@@ -23,12 +25,12 @@ int freak(const cv::Mat & frame, cv::Mat &out_frame)
 {
     cv::cvtColor(frame, out_frame, cv::COLOR_BGR2GRAY);
     //ORB detector with pyramid but AGAST NO!! cv::AgastFeatureDetector::create(20);//
-    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(5000);
+    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(500);
 
     std::vector<cv::KeyPoint> keypoints_object;
     detector->detect(frame, keypoints_object);
     for(int i = 0; i < keypoints_object.size(); i++){
-        std::cout<<keypoints_object[i].size<<" - "<<keypoints_object[i].octave<<std::endl;
+        //std::cout<<keypoints_object[i].size<<" - "<<keypoints_object[i].octave<<std::endl;
     }
     cv::drawKeypoints(frame, keypoints_object, out_frame);
     //std::cout<<keypoints_object.size()<<std::endl;
@@ -73,8 +75,22 @@ void request(HttpClient & client, const std::string & frame){
     std::cerr << "Client request error: " << e.what() << std::endl;
 }
 }
+std::vector<cv::Point> caculateHexagon(int width, int height){
+    std::vector<cv::Point> points;
+    int roi_edge = width > height ? height/2: width/2;
+    cv::Point center(width / 2, height / 2);
+
+    points.push_back(cv::Point(center.x - roi_edge / 2, center.y - roi_edge / 2));
+    points.push_back(cv::Point(center.x - roi_edge / 2, center.y + roi_edge / 2));
+    points.push_back(cv::Point(center.x, center.y + roi_edge*3/4));
+
+    points.push_back(cv::Point(center.x + roi_edge / 2, center.y + roi_edge / 2));
+    points.push_back(cv::Point(center.x + roi_edge / 2, center.y - roi_edge / 2));
+    points.push_back(cv::Point(center.x, center.y - roi_edge * 3 / 4));
+    return points;
+}
 int main(){
-    test();
+    //test();
     HttpClient client("localhost:8080");
 
     cv::VideoCapture capture(0);
@@ -92,6 +108,7 @@ int main(){
         if(!capture.read(frame)){
             break;
         }
+        std::cout<<frame.rows<<" - "<<frame.cols<<std::endl;
         ++count;
         if(count % 10 == 0){
             std::string frame_en = mat_base64_encode(frame);
@@ -102,7 +119,13 @@ int main(){
         //break;
         cv::Mat out_frame;
         freak(frame, out_frame);
-        break;
+        //break;
+        cv::Point start(10,10);
+        cv::Point end(out_frame.cols - 10, out_frame.rows - 10);
+        cv::Scalar color(0, 255, 0);
+        auto pts = caculateHexagon(out_frame.cols, out_frame.rows);
+        xar::draw::polylines(out_frame, pts, color);
+        //xar::draw::rectangle(out_frame, start, end, color);
         cv::imshow("xar", out_frame);
         if( cv::waitKey(50) == 27 ){
             break;
