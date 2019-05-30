@@ -89,6 +89,7 @@ std::vector<cv::Point> caculateHexagon(int width, int height){
     points.push_back(cv::Point(center.x, center.y - roi_edge * 3 / 4));
     return points;
 }
+
 int main(){
     //test();
     HttpClient client("localhost:8080");
@@ -102,30 +103,48 @@ int main(){
     
     int key = -1;
     int count = 0;
+    int seconds = 0;
     while(key == -1){
         cv::Mat frame;
         
         if(!capture.read(frame)){
             break;
         }
-        std::cout<<frame.rows<<" - "<<frame.cols<<std::endl;
+        double fps = capture.get(CV_CAP_PROP_FPS);
+
+        cv::Point center(frame.cols / 2, frame.rows / 2);
+        int edge = frame.cols > frame.rows ? frame.rows / 2 : frame.cols / 2;
+
+        std::cout << frame.rows << " - " << frame.cols << " - " << fps <<" - "<<edge<< std::endl;
+
+        cv::Scalar color(0, 255, 0);
         ++count;
-        if(count % 10 == 0){
-            std::string frame_en = mat_base64_encode(frame);
+
+        if(count % 12 == 0){
+            cv::Mat target = xar::transform::rectangle(frame,
+                                                       cv::Point(center.x - edge / 2, center.y - edge / 2),
+                                                       cv::Point(center.x + edge / 2, center.y + edge / 2));
+            std::string frame_en = mat_base64_encode(target);
             //std::cout<<frame_en<<std::endl;
+            xar::draw::text(frame, std::to_string(++seconds), cv::Point(frame.cols / 2, frame.rows / 2), cv::FONT_HERSHEY_SIMPLEX, 2, color);
             request(client, frame_en);
             count = 0;
+            if(seconds % 10 == 0){
+                cv::imwrite(std::to_string(++seconds) + ".jpg", target);
+            }
         }
+
         //break;
         cv::Mat out_frame;
         freak(frame, out_frame);
         //break;
         cv::Point start(10,10);
         cv::Point end(out_frame.cols - 10, out_frame.rows - 10);
-        cv::Scalar color(0, 255, 0);
+        
         auto pts = caculateHexagon(out_frame.cols, out_frame.rows);
         xar::draw::polylines(out_frame, pts, color);
         //xar::draw::rectangle(out_frame, start, end, color);
+        //
         cv::imshow("xar", out_frame);
         if( cv::waitKey(50) == 27 ){
             break;
