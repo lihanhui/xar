@@ -145,7 +145,10 @@ int main(){
         xar::draw::polylines(out_frame, pts, color);
         //xar::draw::rectangle(out_frame, start, end, color);
         //
-        cv::imshow("xar", out_frame);
+        cv::Mat target = xar::transform::rectangle(out_frame,
+                                                       cv::Point(center.x - 2*edge / 3, center.y - 2*edge / 3),
+                                                       cv::Point(center.x + 2*edge / 3, center.y + 2*edge / 3));
+        cv::imshow("xar", target);
         if( cv::waitKey(50) == 27 ){
             break;
         }
