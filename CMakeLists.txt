@@ -17,10 +17,12 @@ include_directories("/usr/local/include")
 find_package(OpenCV REQUIRED)
 find_package(doraemon REQUIRED)
 #####################################
-add_executable(xar-test src/xar.cxx )
+add_executable(xar-test src/xar.cxx
+                        src/recognition/feature.cxx )
 target_link_libraries(xar-test  ${OpenCV_LIBS})
 target_link_libraries(xar-test  ${doraemon_LIBRARIES})
 
-add_library(xar SHARED src/xar.cxx )
+add_library(xar SHARED src/xar.cxx
+                      src/recognition/feature.cxx )
 target_link_libraries(xar  ${OpenCV_LIBS})
 target_link_libraries(xar  ${doraemon_LIBRARIES})

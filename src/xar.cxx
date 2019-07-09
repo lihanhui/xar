@@ -77,16 +77,16 @@ void request(HttpClient & client, const std::string & frame){
 }
 std::vector<cv::Point> caculateHexagon(int width, int height){
     std::vector<cv::Point> points;
-    int roi_edge = width > height ? height/2: width/2;
+    int roi_edge = width > height ? 2*height/3: 2*width/3;
     cv::Point center(width / 2, height / 2);
 
-    points.push_back(cv::Point(center.x - roi_edge / 2, center.y - roi_edge / 2));
-    points.push_back(cv::Point(center.x - roi_edge / 2, center.y + roi_edge / 2));
-    points.push_back(cv::Point(center.x, center.y + roi_edge*3/4));
+    points.push_back(cv::Point(center.x - roi_edge / 2, center.y - 1.732 * roi_edge / 6));
+    points.push_back(cv::Point(center.x - roi_edge / 2, center.y + 1.732 * roi_edge / 6));
+    points.push_back(cv::Point(center.x, center.y + 1.732 * roi_edge / 3));
 
-    points.push_back(cv::Point(center.x + roi_edge / 2, center.y + roi_edge / 2));
-    points.push_back(cv::Point(center.x + roi_edge / 2, center.y - roi_edge / 2));
-    points.push_back(cv::Point(center.x, center.y - roi_edge * 3 / 4));
+    points.push_back(cv::Point(center.x + roi_edge / 2, center.y + 1.732 * roi_edge / 6));
+    points.push_back(cv::Point(center.x + roi_edge / 2, center.y - 1.732 * roi_edge / 6));
+    points.push_back(cv::Point(center.x, center.y - 1.732 * roi_edge / 3));
     return points;
 }
 
@@ -113,9 +113,9 @@ int main(){
         double fps = capture.get(CV_CAP_PROP_FPS);
 
         cv::Point center(frame.cols / 2, frame.rows / 2);
-        int edge = frame.cols > frame.rows ? frame.rows / 2 : frame.cols / 2;
+        int edge = frame.cols > frame.rows ? 2*frame.rows / 3 : 2*frame.cols / 3;
 
-        std::cout << frame.rows << " - " << frame.cols << " - " << fps <<" - "<<edge<< std::endl;
+        //std::cout << frame.rows << " - " << frame.cols << " - " << fps <<" - "<<edge<< std::endl;
 
         cv::Scalar color(0, 255, 0);
         ++count;
@@ -124,13 +124,20 @@ int main(){
             cv::Mat target = xar::transform::rectangle(frame,
                                                        cv::Point(center.x - edge / 2, center.y - edge / 2),
                                                        cv::Point(center.x + edge / 2, center.y + edge / 2));
+            cv::Mat imageGray; 
+            cv::cvtColor(target, imageGray, CV_RGB2GRAY);
+            cv::Mat imageSobel;
+            cv::Sobel(imageGray, imageSobel, CV_16U, 1, 1);
+            double meanValue = 0.0;
+            meanValue = cv::mean(imageSobel)[0];
+            std::cout<<meanValue<<std::endl;
             std::string frame_en = mat_base64_encode(target);
             //std::cout<<frame_en<<std::endl;
-            xar::draw::text(frame, std::to_string(++seconds), cv::Point(frame.cols / 2, frame.rows / 2), cv::FONT_HERSHEY_SIMPLEX, 2, color);
+            xar::draw::text(frame, std::to_string(++seconds), cv::Point(frame.cols/ 2, frame.rows / 2), cv::FONT_HERSHEY_SIMPLEX, 2, color);
             request(client, frame_en);
             count = 0;
             if(seconds % 10 == 0){
-                cv::imwrite(std::to_string(++seconds) + ".jpg", target);
+                ;cv::imwrite(std::to_string(seconds++) + ".jpg", target);
             }
         }
 
@@ -146,8 +153,8 @@ int main(){
         //xar::draw::rectangle(out_frame, start, end, color);
         //
         cv::Mat target = xar::transform::rectangle(out_frame,
-                                                       cv::Point(center.x - 2*edge / 3, center.y - 2*edge / 3),
-                                                       cv::Point(center.x + 2*edge / 3, center.y + 2*edge / 3));
+                                                       cv::Point(center.x - edge / 2, center.y - edge / 2),
+                                                       cv::Point(center.x + edge / 2, center.y + edge / 2));
         cv::imshow("xar", target);
         if( cv::waitKey(50) == 27 ){
             break;
