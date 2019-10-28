@@ -1,5 +1,4 @@
 #include <opencv2/opencv.hpp>
-#include <opencv2/xfeatures2d.hpp>
 
 #include "recognition/feature.h"
 
@@ -17,8 +16,8 @@ void feature::detect_origin(cv::Mat &image, std::vector<cv::KeyPoint> &kps){
 }
 
 void feature::compute(cv::Mat &image, std::vector<cv::KeyPoint> &kps, cv::Mat &descriptors){
-    cv::Ptr<cv::xfeatures2d::FREAK> freak = cv::xfeatures2d::FREAK::create();
-    freak->compute(image, kps, descriptors);
+    cv::Ptr<cv::FeatureDetector> orb = cv::ORB::create(500);
+    orb->compute(image, kps, descriptors);
 }
 void feature::scale_keypoints(std::vector<cv::KeyPoint> &kps, std::unordered_map<int, std::vector<cv::KeyPoint>> &kp_map){
     auto scale = [&](const cv::KeyPoint &kp) {
