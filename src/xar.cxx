@@ -20,7 +20,7 @@ void test(){
     auto pair = experimental();
     std::cout<<pair.first<<":"<<pair.second<<std::endl;
 }
-int freak(const cv::Mat & frame, cv::Mat &out_frame)
+int compute(const cv::Mat & frame, cv::Mat &out_frame)
 {
     cv::cvtColor(frame, out_frame, cv::COLOR_BGR2GRAY);
     //ORB detector with pyramid but AGAST NO!! cv::AgastFeatureDetector::create(20);//
@@ -142,7 +142,7 @@ int main2(){
 
         //break;
         cv::Mat out_frame;
-        freak(frame, out_frame);
+        compute(frame, out_frame);
         //break;
         cv::Point start(10,10);
         cv::Point end(out_frame.cols - 10, out_frame.rows - 10);
@@ -169,7 +169,7 @@ int main() {
 	while (1) { 
 		capture >> frame;
 		cv::Mat out_frame;
-		freak(frame, out_frame); 
+		compute(frame, out_frame); 
 		std::cout<<out_frame.rows<<":"<<out_frame.cols<<std::endl; 
 		if (frame.empty()) { 
 			cout << "|------视频已读完！------|\n"; break;
