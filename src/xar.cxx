@@ -163,18 +163,27 @@ int main2(){
 }
 using namespace std; 
 using namespace cv; 
-int main() { 
-	String path = "~/Downloads/2019-10-2.mov"; 
-	Mat frame; VideoCapture capture(0); // path 为视频文件的路径 
+int main(int argc, char* argv[] ) { 
+	Mat frame; 
+	VideoCapture capture; 
+	if(argc > 1) {
+		string path = argv[1];
+		std::cout<<"try to open file "<<path<<std::endl;
+		capture = VideoCapture(argv[1]);// path 为视频文件的路径 
+	}else{
+		std::cout<<"try to open camera"<<std::endl;
+		capture = VideoCapture(0);
+	}
 	while (1) { 
 		capture >> frame;
+		if (frame.empty()) {
+                       cout << "|------视频已读完！------|\n"; break;
+                }
+
 		cv::Mat out_frame;
 		compute(frame, out_frame); 
 		std::cout<<out_frame.rows<<":"<<out_frame.cols<<std::endl; 
-		if (frame.empty()) { 
-			cout << "|------视频已读完！------|\n"; break;
-	 	} 
-		imshow("视频",frame); waitKey(20); // 不加 waitKey() 视频是播放不出来的, 里面的参数单位为 ms, 为每帧之间的间隔时间 
+		//imshow("视频",frame); waitKey(20); // 不加 waitKey() 视频是播放不出来的, 里面的参数单位为 ms, 为每帧之间的间隔时间 
 	}	 
 	capture.release(); 
 	return 0;
