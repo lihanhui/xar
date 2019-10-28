@@ -181,7 +181,13 @@ int main(int argc, char* argv[] ) {
                 }
 
 		cv::Mat out_frame;
-		compute(frame, out_frame); 
+		compute(frame, out_frame);
+		for(int i = 0; i < out_frame.rows; ++i){
+			for(int j = 0; j < out_frame.cols; ++j){
+				std::cout<<(unsigned int)out_frame.at<unsigned char>(i, j)<<" ";
+			}
+			std::cout<<std::endl;
+		}
 		std::cout<<out_frame.rows<<":"<<out_frame.cols<<std::endl; 
 		//imshow("视频",frame); waitKey(20); // 不加 waitKey() 视频是播放不出来的, 里面的参数单位为 ms, 为每帧之间的间隔时间 
 	}	 
