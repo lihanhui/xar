@@ -28,12 +28,12 @@ int freak(const cv::Mat & frame, cv::Mat &out_frame)
     cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(500);
 
     std::vector<cv::KeyPoint> keypoints_object;
-    detector->detect(frame, keypoints_object);
+    detector->detectAndCompute(frame, cv::Mat(),  keypoints_object, out_frame);
     for(int i = 0; i < keypoints_object.size(); i++){
         //std::cout<<keypoints_object[i].size<<" - "<<keypoints_object[i].octave<<std::endl;
     }
-    cv::drawKeypoints(frame, keypoints_object, out_frame);
-    //std::cout<<keypoints_object.size()<<std::endl;
+    //cv::drawKeypoints(frame, keypoints_object, out_frame);
+    std::cout<<keypoints_object.size()<<std::endl;
 
     return 0;
 }
@@ -90,7 +90,7 @@ std::vector<cv::Point> caculateHexagon(int width, int height){
     return points;
 }
 
-int main(){
+int main2(){
     //test();
     HttpClient client("localhost:8080");
 
@@ -161,4 +161,22 @@ int main(){
         }
     }
     return 0;
+}
+using namespace std; 
+using namespace cv; 
+int main() { 
+	String path = "~/Downloads/2019-10-2.mov"; 
+	Mat frame; VideoCapture capture(0); // path 为视频文件的路径 
+	while (1) { 
+		capture >> frame;
+		cv::Mat out_frame;
+		freak(frame, out_frame); 
+		std::cout<<out_frame.rows<<":"<<out_frame.cols<<std::endl; 
+		if (frame.empty()) { 
+			cout << "|------视频已读完！------|\n"; break;
+	 	} 
+		imshow("视频",frame); waitKey(20); // 不加 waitKey() 视频是播放不出来的, 里面的参数单位为 ms, 为每帧之间的间隔时间 
+	}	 
+	capture.release(); 
+	return 0;
 }

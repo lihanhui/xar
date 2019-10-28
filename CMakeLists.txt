@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.0)
 
 set (CXX_STANDARD "c++17")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=${CXX_STANDARD}")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g  -std=${CXX_STANDARD}")
 
 project (xar VERSION 1.0.0)
 
@@ -22,7 +22,7 @@ add_executable(xar-test src/xar.cxx
 target_link_libraries(xar-test  ${OpenCV_LIBS})
 target_link_libraries(xar-test  ${doraemon_LIBRARIES})
 
-add_library(xar SHARED src/xar.cxx
-                      src/recognition/feature.cxx )
-target_link_libraries(xar  ${OpenCV_LIBS})
-target_link_libraries(xar  ${doraemon_LIBRARIES})
+#add_library(xar SHARED src/xar.cxx
+#                      src/recognition/feature.cxx )
+#target_link_libraries(xar  ${OpenCV_LIBS})
+#target_link_libraries(xar  ${doraemon_LIBRARIES})
