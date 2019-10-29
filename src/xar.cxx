@@ -1,8 +1,12 @@
 #include <iostream>
+#include <experimental/filesystem>
+#include <bitset>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 #include <simple-web-server/client_http.hpp>
+#include <faiss/Clustering.h>
+#include <faiss/IndexFlat.h>
 
 #include <doraemon/base64/base64.h>
 
@@ -32,8 +36,7 @@ int compute(const cv::Mat & frame, cv::Mat &out_frame)
         //std::cout<<keypoints_object[i].size<<" - "<<keypoints_object[i].octave<<std::endl;
     }
     //cv::drawKeypoints(frame, keypoints_object, out_frame);
-    std::cout<<keypoints_object.size()<<std::endl;
-
+    //std::cout<<keypoints_object.size()<<std::endl;
     return 0;
 }
 
@@ -163,7 +166,7 @@ int main2(){
 }
 using namespace std; 
 using namespace cv; 
-int main(int argc, char* argv[] ) { 
+int main3(int argc, char* argv[] ) { 
 	Mat frame; 
 	VideoCapture capture; 
 	if(argc > 1) {
@@ -193,4 +196,66 @@ int main(int argc, char* argv[] ) {
 	}	 
 	capture.release(); 
 	return 0;
+}
+void tofloat(float *dest, Mat & frame ){
+	for(int i = 0; i < frame.rows; ++i){
+		for(int j = 0; j < frame.cols; ++j){
+			std::bitset<8> bits = (unsigned int)frame.at<unsigned char>(i, j);
+			for(int k = 0; k < 8; ++k){
+				if(bits.test(7-k)) {
+					*dest = 1.0;
+				} else{
+					*dest = 0.0;
+				}
+				++dest;
+			}
+		}
+	}
+}
+const int DIM = 1024;
+const int CENTROIDS = 1024;
+static faiss::IndexFlatL2 img_index(DIM);
+
+float totrain(size_t d, size_t n, size_t k,
+		const float *x,
+		float *centroids){
+	faiss::Clustering clus (d, k);
+	clus.verbose = d * n * k > (1L << 30);
+	clus.train(n, x, img_index);
+	memcpy(centroids, clus.centroids.data(), sizeof(*centroids) * d * k);
+	return clus.obj.back();
+
+}
+void train(std::vector<std::string> imgs){
+	float *data = new float[imgs.size() * 500 * 32 * 8];
+	memset(data, 0, sizeof(float) * imgs.size() * 500 * 32 * 8);
+	float * tmp = data;
+	int number = 0;
+	for(auto img: imgs){
+		Mat frame, out_frame;
+		frame = imread(img);
+		cv::cvtColor(frame, out_frame, cv::COLOR_BGR2GRAY);
+		compute(frame, out_frame);
+		tofloat(tmp, out_frame);
+		tmp += out_frame.rows * out_frame.cols * 8;
+		number += out_frame.rows;		
+	}
+	float *centroids = new float(CENTROIDS);
+	std::cout<<"imgs.size() * 500 * 32 * 8 = "<<imgs.size() * 500 * 32 * 8<< " | 256 * number = " << 256 * number<<std::endl;
+	totrain(256, number, CENTROIDS, data, centroids);
+}
+namespace fs = std::experimental::filesystem;
+int main(int argc, char* argv[] ) {
+	Mat frame;
+	if(argc == 1){
+		return -1;
+	}
+	std::vector<std::string> imgs;
+	string path = argv[1];
+	for(auto p: fs::directory_iterator(path)){
+		string file = p.path().string() ;
+		imgs.push_back(file);
+	}
+	train(imgs);
+
 }
