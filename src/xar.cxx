@@ -1,11 +1,14 @@
 #include <iostream>
 #include <experimental/filesystem>
 #include <bitset>
+#include <chrono>
+#include <thread>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 #include <simple-web-server/client_http.hpp>
 #include <faiss/Clustering.h>
+#include <faiss/Index.h>
 #include <faiss/IndexFlat.h>
 
 #include <doraemon/base64/base64.h>
@@ -212,24 +215,27 @@ void tofloat(float *dest, Mat & frame ){
 		}
 	}
 }
-const int DIM = 1024;
+const int DIM = 256;
 const int CENTROIDS = 1024;
 static faiss::IndexFlatL2 img_index(DIM);
-
+static float * img_data = nullptr;
+static float * centroids = nullptr;
+static faiss::Clustering *clus = nullptr;
 float totrain(size_t d, size_t n, size_t k,
 		const float *x,
 		float *centroids){
-	faiss::Clustering clus (d, k);
-	clus.verbose = d * n * k > (1L << 30);
-	clus.train(n, x, img_index);
-	memcpy(centroids, clus.centroids.data(), sizeof(*centroids) * d * k);
-	return clus.obj.back();
+	clus = new faiss::Clustering(d, k);
+	clus->verbose = d * n * k > (1L << 30);
+	//img_index.metric_type = faiss::METRIC_L2;
+	clus->train(n, x, img_index);
+	memcpy(centroids, clus->centroids.data(), sizeof(*centroids) * d * k);
+	return 0.0;
 
 }
 void train(std::vector<std::string> imgs){
-	float *data = new float[imgs.size() * 500 * 32 * 8];
-	memset(data, 0, sizeof(float) * imgs.size() * 500 * 32 * 8);
-	float * tmp = data;
+	img_data = new float[imgs.size() * 500 * 32 * 8];
+	memset(img_data, 0, sizeof(float) * imgs.size() * 500 * 32 * 8);
+	float * tmp = img_data;
 	int number = 0;
 	for(auto img: imgs){
 		Mat frame, out_frame;
@@ -240,9 +246,10 @@ void train(std::vector<std::string> imgs){
 		tmp += out_frame.rows * out_frame.cols * 8;
 		number += out_frame.rows;		
 	}
-	float *centroids = new float(CENTROIDS);
-	std::cout<<"imgs.size() * 500 * 32 * 8 = "<<imgs.size() * 500 * 32 * 8<< " | 256 * number = " << 256 * number<<std::endl;
-	totrain(256, number, CENTROIDS, data, centroids);
+	number = number / DIM * DIM;
+	centroids = new float[DIM * CENTROIDS];
+	std::cout<<"imgs.size() "<<imgs.size()<< " | vectors = " << number<<std::endl;
+	totrain(DIM, number, CENTROIDS, img_data, centroids);
 }
 namespace fs = std::experimental::filesystem;
 int main(int argc, char* argv[] ) {
@@ -257,5 +264,8 @@ int main(int argc, char* argv[] ) {
 		imgs.push_back(file);
 	}
 	train(imgs);
-
+	std::cout<<"finished"<<std::endl;
+	std::this_thread::sleep_for(std::chrono::seconds(15));
+        delete [] img_data; 
+        delete [] centroids; 
 }
