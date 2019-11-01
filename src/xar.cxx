@@ -3,6 +3,7 @@
 #include <bitset>
 #include <chrono>
 #include <thread>
+#include <cmath>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
@@ -216,8 +217,9 @@ void tofloat(float *dest, Mat & frame ){
 	}
 }
 const int DIM = 256;
-const int CENTROIDS = 1024;
+const int CENTROIDS = 8192;
 static faiss::IndexFlatL2 img_index(DIM);
+static faiss::IndexFlatL2 centroid_index(DIM);
 static float * img_data = nullptr;
 static float * centroids = nullptr;
 static faiss::Clustering *clus = nullptr;
@@ -238,9 +240,9 @@ void train(std::vector<std::string> imgs){
 	float * tmp = img_data;
 	int number = 0;
 	for(auto img: imgs){
-		Mat frame, out_frame;
+		Mat frame, gray_frame, out_frame;
 		frame = imread(img);
-		cv::cvtColor(frame, out_frame, cv::COLOR_BGR2GRAY);
+		//cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
 		compute(frame, out_frame);
 		tofloat(tmp, out_frame);
 		tmp += out_frame.rows * out_frame.cols * 8;
@@ -250,22 +252,80 @@ void train(std::vector<std::string> imgs){
 	centroids = new float[DIM * CENTROIDS];
 	std::cout<<"imgs.size() "<<imgs.size()<< " | vectors = " << number<<std::endl;
 	totrain(DIM, number, CENTROIDS, img_data, centroids);
+	/*for(int i = 0; i < CENTROIDS; ++i){
+		for(int j = 0; j < DIM; ++j){
+			std::cout<< *(centroids + i * DIM + j)<<" "; 
+		}
+		std::cout<<std::endl;
+	}//*/
+	centroid_index.add(CENTROIDS, centroids);
 }
 namespace fs = std::experimental::filesystem;
 int main(int argc, char* argv[] ) {
-	Mat frame;
-	if(argc == 1){
+	if(argc < 4){
 		return -1;
 	}
 	std::vector<std::string> imgs;
 	string path = argv[1];
+	string img  = argv[2];
+        string lookup = argv[3];	
 	for(auto p: fs::directory_iterator(path)){
 		string file = p.path().string() ;
 		imgs.push_back(file);
 	}
+	imgs.push_back(img);
 	train(imgs);
+        std::cout<<"training finished"<<std::endl;	
+	faiss::IndexFlatL2 final_index(CENTROIDS); 
+	Mat frame, gray_frame, out_frame;
+	for(auto img: imgs){
+		frame = imread(img);
+		//cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
+		compute(frame, out_frame);
+		float * img_data  = new float[out_frame.rows * 32 * 8];
+		float * distances = new float[out_frame.rows];
+		faiss::Index::idx_t * labels    = new faiss::Index::idx_t[out_frame.rows];
+		tofloat(img_data, out_frame);
+	
+        	centroid_index.search(out_frame.rows, img_data, 1, distances, labels);
+                float * xb = new float[ CENTROIDS ];
+		memset(xb, 0, sizeof(float) * CENTROIDS) ;
+		for(int i = 0; i < out_frame.rows; ++i){
+			//std::cout<<"distance: " << distances[i] << " label "<< labels[i] <<std::endl;
+			if( labels[i] >= 0  ){
+				xb[labels[i]] = xb[labels[i]] + 1;
+			}
+		}
+		final_index.add(1, xb);
+	}
+	std::cout<<"imgs preparing finished: we will looking up "<<imgs.size() - 1<<std::endl;
+	frame = imread(lookup);
+	compute(frame, out_frame);
+	float * img_data  = new float[out_frame.rows * 32 * 8];
+        tofloat(img_data, out_frame);
+	float * distances = new float[out_frame.rows];
+	faiss::Index::idx_t * labels    = new faiss::Index::idx_t[out_frame.rows];
+	centroid_index.search(out_frame.rows, img_data, 1, distances, labels);
+
+        float * xq = new float[ CENTROIDS ];
+        memset(xq, 0, sizeof(float) * CENTROIDS) ;
+        for(int i = 0; i < out_frame.rows; ++i){
+		if( labels[i] >= 0 ){
+			xq[labels[i]] = xq[labels[i]] + 1;
+		}
+	}
+	float square_sum = 0;
+	for(int i = 0; i < CENTROIDS; ++i){
+		if(labels[i] >= 0) square_sum += pow(xq[i], 2);
+	}//*/	
+	long I = -1;
+	float D = -1;
+	final_index.search(1, xq, 1, &D, &I);
+	std::cout<<"D: "<< D << " I: " << I<< " sqrt: " << sqrt(square_sum) <<std::endl;
+
+
 	std::cout<<"finished"<<std::endl;
-	std::this_thread::sleep_for(std::chrono::seconds(15));
+	//std::this_thread::sleep_for(std::chrono::seconds(15));
         delete [] img_data; 
         delete [] centroids; 
 }
